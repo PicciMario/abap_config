@@ -5,9 +5,28 @@ CLASS zmp_config DEFINITION
 
   PUBLIC SECTION.
 
-    INTERFACES: if_oo_adt_classrun.
+    TYPES: BEGIN OF lt_param,
+             function     TYPE zmp_param-function,
+             config_key   TYPE zmp_param-config_key,
+             company      TYPE zmp_param-company,
+             plant        TYPE zmp_param-plant,
+             config_value TYPE zmp_param-config_value,
+           END OF lt_param.
+
+    DATA: gv_function TYPE zmp_param-function,
+          gt_param    TYPE TABLE OF lt_param.
+
+    CLASS-METHODS:
+      create
+        IMPORTING
+          iv_function        TYPE zmp_param-function
+        RETURNING
+          VALUE(lo_instance) TYPE REF TO zmp_config.
 
     METHODS:
+      constructor
+        IMPORTING
+          iv_func TYPE zmp_param-function,
       get_key
         IMPORTING
           iv_key   TYPE zmp_param-config_key
@@ -18,10 +37,6 @@ CLASS zmp_config DEFINITION
 
   PRIVATE SECTION.
 
-    CLASS-METHODS:
-      create
-        RETURNING VALUE(lo_instance) TYPE REF TO zmp_config.
-
 ENDCLASS.
 
 
@@ -30,15 +45,23 @@ CLASS zmp_config IMPLEMENTATION.
 
 
   METHOD create.
+    lo_instance = NEW zmp_config( iv_func = iv_function  ).
+  ENDMETHOD.
 
-    DELETE FROM zmp_param.
 
-    INSERT zmp_param FROM TABLE @( VALUE #(
-        ( function = 'CIAO' config_key = 'key1' config_value = 'prima chiave' )
-        ( function = 'CIAO' config_key = 'key2' config_value = 'seconda chiave' )
-    ) ).
+  METHOD constructor.
 
-    lo_instance = NEW zmp_config(  ).
+    gv_function = iv_func.
+
+    SELECT
+      function,
+      config_key,
+      company,
+      plant,
+      config_value
+    FROM zmp_param
+    WHERE function = @iv_func
+    APPENDING CORRESPONDING FIELDS OF TABLE @gt_param.
 
   ENDMETHOD.
 
@@ -47,17 +70,6 @@ CLASS zmp_config IMPLEMENTATION.
     ov_value = |ottimismo!|.
   ENDMETHOD.
 
-
-  METHOD if_oo_adt_classrun~main.
-
-    DATA(lo_config) = zmp_config=>create( ).
-    lo_config->get_key(
-        EXPORTING iv_key = 'key1'
-        IMPORTING ov_value = DATA(lo_key)
-    ).
-    out->write( lo_key ).
-
-  ENDMETHOD.
 
 
 ENDCLASS.
