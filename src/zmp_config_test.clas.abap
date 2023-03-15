@@ -28,10 +28,7 @@ CLASS zmp_config_test IMPLEMENTATION.
     DATA: lo_config TYPE REF TO zmp_config.
     lo_config = zmp_config=>create( iv_function = 'CIAO' ).
 
-    lo_config->get_key(
-        EXPORTING iv_key = 'key1'
-        IMPORTING ov_value = DATA(lv_key)
-    ).
+    DATA(lv_key) = lo_config->get_key( EXPORTING iv_key = 'key1' ).
 
     out->write( lv_key ).
     out->write( lo_config->gt_param ).
