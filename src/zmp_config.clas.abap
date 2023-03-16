@@ -1,7 +1,7 @@
 CLASS zmp_config DEFINITION
   PUBLIC
   FINAL
-  CREATE PUBLIC .
+  CREATE PUBLIC . "TODO: rendere il CREATE PRIVATE (serve public per il classrun).
 
   PUBLIC SECTION.
 
@@ -47,8 +47,7 @@ CLASS zmp_config DEFINITION
   PROTECTED SECTION.
 
   PRIVATE SECTION.
-    DATA: lv_param_eval TYPE ty_param_eval,
-          lt_param_eval TYPE TABLE OF ty_param_eval.
+    DATA: lt_param_eval TYPE TABLE OF ty_param_eval.
 
 ENDCLASS.
 
@@ -123,16 +122,16 @@ CLASS zmp_config IMPLEMENTATION.
 
   METHOD if_oo_adt_classrun~main.
 
-    DELETE FROM zmp_param.
-
-    INSERT zmp_param FROM TABLE @( VALUE #(
-*        ( function = 'CIAO' config_key = 'key1' config_value = 'prima chiave' )
-        ( function = 'CIAO' config_key = 'key1' company = 'XXX' config_value = 'prima chiave XXX' )
-        ( function = 'CIAO' config_key = 'key1' company = 'AAA' config_value = 'prima chiave AAA' )
-        ( function = 'CIAO' config_key = 'key1' company = 'AAA' plant = 'P01' config_value = 'prima chiave AAA P01' )
-        ( function = 'CIAO' config_key = 'key1' company = 'AAA' plant = 'P02' config_value = 'prima chiave AAA P02' )
-        ( function = 'CIAO' config_key = 'key2' config_value = 'seconda chiave' )
-    ) ).
+*    DELETE FROM zmp_param.
+*
+*    INSERT zmp_param FROM TABLE @( VALUE #(
+**        ( function = 'CIAO' config_key = 'key1' config_value = 'prima chiave' )
+*        ( function = 'CIAO' config_key = 'key1' company = 'XXX' config_value = 'prima chiave XXX' )
+*        ( function = 'CIAO' config_key = 'key1' company = 'AAA' config_value = 'prima chiave AAA' )
+*        ( function = 'CIAO' config_key = 'key1' company = 'AAA' plant = 'P01' config_value = 'prima chiave AAA P01' )
+*        ( function = 'CIAO' config_key = 'key1' company = 'AAA' plant = 'P02' config_value = 'prima chiave AAA P02' )
+*        ( function = 'CIAO' config_key = 'key2' config_value = 'seconda chiave' )
+*    ) ).
 
     DATA(lo_config) = zmp_config=>create( iv_function = 'CIAO' ).
 
@@ -141,7 +140,6 @@ CLASS zmp_config IMPLEMENTATION.
           lv_plant   TYPE zmp_param-plant VALUE ''.
 
     DATA(lv_result) = lo_config->get_key(
-      EXPORTING
         iv_key = lv_key
         iv_company = lv_company
         iv_plant = lv_plant
