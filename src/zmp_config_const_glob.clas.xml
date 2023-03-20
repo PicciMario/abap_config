@@ -3,9 +3,9 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <VSEOCLASS>
-    <CLSNAME>ZMP_CONFIG_TEST</CLSNAME>
+    <CLSNAME>ZMP_CONFIG_CONST_GLOB</CLSNAME>
     <LANGU>E</LANGU>
-    <DESCRIPT>zmp_config_test</DESCRIPT>
+    <DESCRIPT>Costanti globali per ZMP_CONFIG</DESCRIPT>
     <STATE>1</STATE>
     <CLSCCINCL>X</CLSCCINCL>
     <FIXPT>X</FIXPT>

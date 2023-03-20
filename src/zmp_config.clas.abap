@@ -182,7 +182,7 @@ CLASS zmp_config IMPLEMENTATION.
     WHERE function = @iv_func
     INTO @DATA(lt_param).
 
-      IF ( lt_param-config_key EQ 'PARENT_FUNCTION' ).
+      IF ( lt_param-config_key EQ zmp_config_const_cli=>parent_function ).
 
         IF ( lv_parent_already_found = 'X' ).
           RAISE EXCEPTION TYPE zmp_cx_config MESSAGE e001(zmp_err_messages) WITH iv_func.
@@ -196,7 +196,7 @@ CLASS zmp_config IMPLEMENTATION.
         DATA: wa_param LIKE LINE OF gt_param.
         MOVE-CORRESPONDING lt_param TO wa_param.
         wa_param-hierarchy_level = iv_hierarchy_level.
-        APPEND wa_param TO gt_param.
+        INSERT wa_param INTO TABLE gt_param.
 
       ENDIF.
 
@@ -296,7 +296,7 @@ CLASS zmp_config IMPLEMENTATION.
         EXIT.
     ENDTRY.
 
-    DATA: lv_key     TYPE zmp_param-config_key VALUE 'KEY1',
+    DATA: lv_key     TYPE zmp_param-config_key VALUE zmp_config_const_cli=>key1,
           lv_company TYPE zmp_param-company VALUE 'AAA',
           lv_plant   TYPE zmp_param-plant VALUE 'P01',
           lt_eval    TYPE tyt_param_eval.
