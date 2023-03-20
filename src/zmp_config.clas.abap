@@ -54,6 +54,7 @@ CLASS zmp_config DEFINITION
           zmp_cx_config,
 
       "! Legge il valore di una chiave.
+      "! <em>Memoizza la chiamata a _get_key.</em>
       "!
       "! @parameter iv_key        | Chiave
       "! @parameter iv_company    | Company
@@ -92,16 +93,27 @@ CLASS zmp_config DEFINITION
 
   PRIVATE SECTION.
 
-    " Tipi per cache istanze
+    " Tipi per cache (statica) istanze
     TYPES: BEGIN OF ty_instances,
              function TYPE zmp_param-function,
              instance TYPE REF TO zmp_config,
            END OF ty_instances.
     TYPES: tyt_instances TYPE TABLE OF ty_instances.
 
+    " Tipi per cache (locale) ricerche
+    TYPES: BEGIN OF ty_search_cache,
+             config_key   TYPE zmp_param-config_key,
+             company      TYPE zmp_param-company,
+             plant        TYPE zmp_param-plant,
+             config_value TYPE zmp_param-config_value,
+           END OF ty_search_cache.
+    TYPES: tyt_search_cache TYPE TABLE OF ty_search_cache.
+
     DATA:
       "! Tabella interna chiavi lette da db.
-      gt_param    TYPE SORTED TABLE OF ty_param WITH NON-UNIQUE KEY primary_key COMPONENTS config_key.
+      gt_param        TYPE SORTED TABLE OF ty_param WITH NON-UNIQUE KEY primary_key COMPONENTS config_key,
+      "! Tabella interna cache ricerche.
+      gt_search_cache TYPE tyt_search_cache.
 
     CLASS-DATA:
       "! Cache statica istanze (per function).
@@ -119,7 +131,24 @@ CLASS zmp_config DEFINITION
           iv_func            TYPE zmp_param-function
           iv_hierarchy_level TYPE i
         RAISING
-          zmp_cx_config.
+          zmp_cx_config,
+
+      "! Legge il valore di una chiave. Uso interno.
+      "!
+      "! @parameter iv_key        | Chiave
+      "! @parameter iv_company    | Company
+      "! @parameter iv_plant      | Plant
+      "! @parameter ot_param_eval | Tabella debug processo di valutazione chiavi
+      "! @parameter ov_value      | Valore chiave trovato
+      _get_key
+        IMPORTING
+          iv_key               TYPE zmp_param-config_key
+          iv_company           TYPE zmp_param-company OPTIONAL
+          iv_plant             TYPE zmp_param-plant OPTIONAL
+        EXPORTING
+          VALUE(ot_param_eval) TYPE tyt_param_eval
+        RETURNING
+          VALUE(ov_value)      TYPE zmp_param-config_value.
 
 
 ENDCLASS.
@@ -207,6 +236,29 @@ CLASS zmp_config IMPLEMENTATION.
 
   METHOD get_key.
 
+    ov_value =
+        VALUE #(
+          gt_search_cache[ config_key = iv_key company = iv_company plant = iv_plant ]-config_value
+          DEFAULT
+            _get_key(
+            EXPORTING
+              iv_key = iv_key
+              iv_company = iv_company
+              iv_plant = iv_plant
+            IMPORTING
+              ot_param_eval = ot_param_eval
+            )
+        ).
+
+    IF ( ov_value IS INITIAL ).
+      ov_value = iv_default.
+    ENDIF.
+
+  ENDMETHOD.
+
+
+  METHOD _get_key.
+
     LOOP AT gt_param INTO DATA(lv_param) WHERE config_key = iv_key.
 
       APPEND INITIAL LINE TO ot_param_eval ASSIGNING FIELD-SYMBOL(<wa_param_eval>).
@@ -233,13 +285,20 @@ CLASS zmp_config IMPLEMENTATION.
 
     ENDLOOP.
 
-    ov_value = iv_default.
     IF ( lines( ot_param_eval ) > 0 ).
       SORT ot_param_eval BY score DESCENDING hierarchy_level ASCENDING.
       IF ( ot_param_eval[ 1 ]-score > 0 ).
         ov_value = ot_param_eval[ 1 ]-config_value.
       ENDIF.
     ENDIF.
+
+    " Registra risultato in cache
+    DATA lv_search_cache TYPE ty_search_cache.
+    lv_search_cache-config_key = iv_key.
+    lv_search_cache-company = iv_company.
+    lv_search_cache-plant = iv_plant.
+    lv_search_cache-config_value = ov_value.
+    INSERT lv_search_cache INTO TABLE gt_search_cache.
 
   ENDMETHOD.
 
