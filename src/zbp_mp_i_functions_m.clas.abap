@@ -1,0 +1,5 @@
+CLASS zbp_mp_i_functions_m DEFINITION PUBLIC ABSTRACT FINAL FOR BEHAVIOR OF zmp_i_functions_m.
+ENDCLASS.
+
+CLASS zbp_mp_i_functions_m IMPLEMENTATION.
+ENDCLASS.

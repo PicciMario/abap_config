@@ -328,7 +328,14 @@ CLASS zmp_config IMPLEMENTATION.
 
   METHOD if_oo_adt_classrun~main.
 
+    DELETE FROM zmp_functions.
     DELETE FROM zmp_param.
+
+    insert zmp_functions from table @( VALUE #(
+        ( function = 'CIAO' description = 'Funzione CIAO' )
+        ( function = 'CIAOPARENT' description = 'Funzione CIAO' )
+        ( function = 'CIAOGRANDPARENT' description = 'Funzione CIAO' )
+    ) ).
 
     INSERT zmp_param FROM TABLE @( VALUE #(
         ( function = 'CIAO'            config_key = 'KEY1'                                          config_value = 'prima chiave' )

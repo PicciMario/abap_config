@@ -1,0 +1,27 @@
+managed implementation in class zbp_mp_i_functions_m unique;
+strict ( 1 );
+
+define behavior for ZMP_I_FUNCTIONS_M //alias <alias_name>
+persistent table zmp_functions
+lock master
+authorization master ( instance )
+//etag master <field_name>
+{
+  create;
+  update;
+  delete;
+  field ( readonly ) function;
+  association _Param { create; }
+}
+
+define behavior for ZMP_I_PARAM_M //alias <alias_name>
+persistent table zmp_param
+lock dependent by _Function
+authorization dependent by _Function
+//etag master <field_name>
+{
+  update;
+  delete;
+  field ( readonly ) function, config_key, plant, company;
+  association _Function;
+}
