@@ -1,0 +1,5 @@
+@EndUserText.label: 'ZMP_SRV_C_FUNCTIONS'
+define service ZMP_SRV_C_FUNCTIONS {
+  expose ZMP_C_FUNCTIONS_M;
+  expose ZMP_C_PARAM_M;
+}

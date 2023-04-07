@@ -1,0 +1,19 @@
+projection;
+strict ( 1 );
+
+define behavior for ZMP_C_FUNCTIONS_M //alias <alias_name>
+{
+  use create;
+  use update;
+  use delete;
+  use action simula;
+  use association _Param { create; }
+}
+
+define behavior for ZMP_C_PARAM_M //alias <alias_name>
+{
+  use update;
+  use delete;
+
+  use association _Function;
+}

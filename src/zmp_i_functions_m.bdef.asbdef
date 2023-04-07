@@ -5,12 +5,13 @@ define behavior for ZMP_I_FUNCTIONS_M //alias <alias_name>
 persistent table zmp_functions
 lock master
 authorization master ( instance )
-//etag master <field_name>
+etag master last_changed_at
 {
   create;
   update;
   delete;
-  field ( readonly ) function;
+  field ( mandatory : create, readonly : update ) function;
+  static action simula parameter ZMP_A_SIMULA result [1] $self;
   association _Param { create; }
 }
 
@@ -18,10 +19,10 @@ define behavior for ZMP_I_PARAM_M //alias <alias_name>
 persistent table zmp_param
 lock dependent by _Function
 authorization dependent by _Function
-//etag master <field_name>
+etag master last_changed_at
 {
   update;
   delete;
-  field ( readonly ) function, config_key, plant, company;
+  field ( mandatory : create, readonly : update ) function, config_key, company, plant;
   association _Function;
 }
