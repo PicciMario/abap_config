@@ -6,6 +6,7 @@ define root view entity ZMP_I_FUNCTIONS_M
 {
 
   key function,
+      parent,
       description,
       note,
       @Semantics.systemDateTime.localInstanceLastChangedAt: true

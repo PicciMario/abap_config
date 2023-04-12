@@ -19,8 +19,9 @@ CLASS ltc_zmp_config DEFINITION FOR TESTING RISK LEVEL HARMLESS DURATION SHORT.
       teardown.
 
     DATA:
-      mo_cut       TYPE REF TO zmp_config,
-      lt_zmp_param TYPE STANDARD TABLE OF zmp_param.
+      mo_cut           TYPE REF TO zmp_config,
+      lt_zmp_param     TYPE STANDARD TABLE OF zmp_param,
+      lt_zmp_functions TYPE STANDARD TABLE OF zmp_functions.
 
 ENDCLASS.
 
@@ -30,7 +31,7 @@ CLASS ltc_zmp_config IMPLEMENTATION.
 
 
   METHOD class_setup.
-    environment = cl_osql_test_environment=>create( i_dependency_list = VALUE #( ( 'ZMP_PARAM' ) ) ).
+    environment = cl_osql_test_environment=>create( i_dependency_list = VALUE #( ( 'ZMP_PARAM' ) ( 'ZMP_FUNCTIONS' ) ) ).
   ENDMETHOD.
 
 
@@ -41,11 +42,22 @@ CLASS ltc_zmp_config IMPLEMENTATION.
 
   METHOD setup.
 
+    lt_zmp_functions = VALUE #(
+        ( function = 'TEST01' parent = 'TEST01PARENT')
+        ( function = 'TEST01PARENT' )
+    ).
+
+    environment->insert_test_data( lt_zmp_functions ).
+
     lt_zmp_param = VALUE #(
+
         ( function = 'TEST01' config_key = 'key1'                               config_value = 'key1' )
         ( function = 'TEST01' config_key = 'key1' company = 'AAA'               config_value = 'key1 AAA' )
         ( function = 'TEST01' config_key = 'key1' company = 'AAA' plant = 'P01' config_value = 'key1 AAA P01' )
         ( function = 'TEST01' config_key = 'key1' company = 'AAA' plant = 'P02' config_value = 'key1 AAA P02' )
+
+        ( function = 'TEST01PARENT' config_key = 'key1' company = 'AAA' plant = 'P03' config_value = 'key1 AAA P03 (parent)' )
+
     ).
 
     environment->insert_test_data( lt_zmp_param ).
@@ -90,6 +102,16 @@ CLASS ltc_zmp_config IMPLEMENTATION.
           iv_default = 'DEFAULT'
         )
         exp = 'key1 AAA P01'
+    ).
+
+    cl_abap_unit_assert=>assert_equals(
+        act = lo_config->get_key(
+          iv_key = 'key1'
+          iv_company = 'AAA'
+          iv_plant = 'P03'
+          iv_default = 'DEFAULT'
+        )
+        exp = 'key1 AAA P03 (parent)'
     ).
 
     cl_abap_unit_assert=>assert_equals(

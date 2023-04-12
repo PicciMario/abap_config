@@ -109,6 +109,14 @@ CLASS zmp_config DEFINITION
            END OF ty_search_cache.
     TYPES: tyt_search_cache TYPE TABLE OF ty_search_cache.
 
+    " Tipi e variabili usati per ricostruzione gerarchia funzioni
+    TYPES: BEGIN OF ty_function_eval.
+             INCLUDE TYPE zmp_functions.
+    TYPES:   hierarchy_level TYPE i,
+           END OF ty_function_eval.
+    TYPES: tyt_function_eval TYPE STANDARD TABLE OF ty_function_eval.
+
+
     DATA:
       "! Tabella interna chiavi lette da db.
       gt_param        TYPE SORTED TABLE OF ty_param WITH NON-UNIQUE KEY primary_key COMPONENTS config_key,
@@ -117,19 +125,19 @@ CLASS zmp_config DEFINITION
 
     CLASS-DATA:
       "! Cache statica istanze (per function).
-      gt_instances  TYPE tyt_instances.
+      gt_instances     TYPE tyt_instances,
+      "! Cache elenco completo funzioni
+      lt_all_functions TYPE TABLE OF zmp_functions.
 
     METHODS:
 
-      "! Metodo ricorsivo di lettura chiavi da db.
+      "! Metodo di lettura chiavi da db.
       "!
       "! @parameter iv_func            | Nome funzione
-      "! @parameter iv_hierarchy_level | Livello gerarchia da assegnare
       "! @raising zmp_cx_config        | Eccezioni per errori struttura db configurazione.
       _read_function
         IMPORTING
-          iv_func            TYPE zmp_param-function
-          iv_hierarchy_level TYPE i
+          iv_func TYPE zmp_param-function
         RAISING
           zmp_cx_config,
 
@@ -183,7 +191,7 @@ CLASS zmp_config IMPLEMENTATION.
     DATA(lv_hierarchy_level) = 0.
 
     TRY.
-        _read_function( iv_func = iv_func iv_hierarchy_level = lv_hierarchy_level ).
+        _read_function( iv_func = iv_func ).
       CATCH zmp_cx_config INTO DATA(exc).
         RAISE EXCEPTION exc.
     ENDTRY.
@@ -193,43 +201,72 @@ CLASS zmp_config IMPLEMENTATION.
 
   METHOD _read_function.
 
-    "  Salvaguardia contro letture circolari
-    IF ( iv_hierarchy_level > 5 ).
-      RAISE EXCEPTION TYPE zmp_cx_config MESSAGE e002(zmp_err_messages).
+    " Legge cache funzioni
+
+    IF ( lt_all_functions IS INITIAL ).
+      SELECT * FROM zmp_functions INTO TABLE @lt_all_functions.
     ENDIF.
 
-    "  Verifica contro parent multipli (non ammessi)
-    DATA: lv_parent_already_found TYPE abap_boolean.
+    " Analizza elenco funzioni e risale la gerarchia dei parent.
 
-    SELECT
-      function,
-      config_key,
-      company,
-      plant,
-      config_value
-    FROM zmp_param
-    WHERE function = @iv_func
-    INTO @DATA(lt_param).
+    DATA: lt_functions     TYPE tyt_function_eval,
+          wa_functions     TYPE ty_function_eval,
+          ls_all_functions TYPE zmp_functions.
 
-      IF ( lt_param-config_key EQ zmp_config_const_cli=>parent_function ).
+    DATA: lv_parent TYPE zmp_de_function.
+    DATA: lv_hierarchy_level TYPE i .
+    lv_parent = iv_func.
+    lv_hierarchy_level = 0.
 
-        IF ( lv_parent_already_found = 'X' ).
-          RAISE EXCEPTION TYPE zmp_cx_config MESSAGE e001(zmp_err_messages) WITH iv_func.
-        ELSE.
-          lv_parent_already_found = 'X'.
-          _read_function( iv_func = CONV #( lt_param-config_value ) iv_hierarchy_level =  iv_hierarchy_level + 1 ).
-        ENDIF.
+    DO.
 
+      "  Salvaguardia contro letture circolari
+      IF ( sy-index > 5 ).
+        RAISE EXCEPTION TYPE zmp_cx_config MESSAGE e002(zmp_err_messages).
+      ENDIF.
+
+      ls_all_functions = VALUE #( lt_all_functions[ function = lv_parent ] OPTIONAL ).
+
+      IF ( ls_all_functions IS INITIAL ).
+        EXIT.
+      ENDIF.
+
+      CLEAR wa_functions.
+      MOVE-CORRESPONDING ls_all_functions TO wa_functions.
+      wa_functions-hierarchy_level = lv_hierarchy_level.
+      lv_hierarchy_level += 1.
+      APPEND wa_functions TO lt_functions.
+
+      IF ( wa_functions-parent IS INITIAL ).
+        EXIT.
       ELSE.
+        lv_parent = wa_functions-parent.
+      ENDIF.
+
+    ENDDO.
+
+    " Legge chiavi per le funzioni identificate
+
+    LOOP AT lt_functions INTO DATA(ls_function).
+
+      SELECT
+        function,
+        config_key,
+        company,
+        plant,
+        config_value
+      FROM zmp_param
+      WHERE function = @ls_function-function
+      INTO @DATA(lt_param).
 
         DATA: wa_param LIKE LINE OF gt_param.
         MOVE-CORRESPONDING lt_param TO wa_param.
-        wa_param-hierarchy_level = iv_hierarchy_level.
+        wa_param-hierarchy_level = ls_function-hierarchy_level.
         INSERT wa_param INTO TABLE gt_param.
 
-      ENDIF.
+      ENDSELECT.
 
-    ENDSELECT.
+    ENDLOOP.
 
   ENDMETHOD.
 
@@ -331,10 +368,10 @@ CLASS zmp_config IMPLEMENTATION.
     DELETE FROM zmp_functions.
     DELETE FROM zmp_param.
 
-    insert zmp_functions from table @( VALUE #(
-        ( function = 'CIAO' description = 'Funzione CIAO' )
-        ( function = 'CIAOPARENT' description = 'Funzione CIAO' )
-        ( function = 'CIAOGRANDPARENT' description = 'Funzione CIAO' )
+    INSERT zmp_functions FROM TABLE @( VALUE #(
+        ( function = 'CIAO'            description = 'Funzione CIAO'             parent = 'CIAOPARENT' )
+        ( function = 'CIAOPARENT'      description = 'Funzione CIAO PARENT'      parent = 'CIAOGRANDPARENT' )
+        ( function = 'CIAOGRANDPARENT' description = 'Funzione CIAO GRANDPARENT' )
     ) ).
 
     INSERT zmp_param FROM TABLE @( VALUE #(
@@ -343,12 +380,10 @@ CLASS zmp_config IMPLEMENTATION.
         ( function = 'CIAO'            config_key = 'KEY1'            company = 'AAA'               config_value = 'prima chiave AAA' )
         ( function = 'CIAO'            config_key = 'KEY1'            company = 'AAA' plant = 'P01' config_value = 'prima chiave AAA P01' )
         ( function = 'CIAO'            config_key = 'KEY1'            company = 'AAA' plant = 'P02' config_value = 'prima chiave AAA P02' )
-        ( function = 'CIAO'            config_key = 'PARENT_FUNCTION'                               config_value = 'CIAOPARENT' )
-*        ( function = 'CIAO'            config_key = 'PARENT_FUNCTION' company = 'abc'               config_value = 'CIAOPARENT2' ) " Test parent multipli
+
         ( function = 'CIAOPARENT'      config_key = 'KEY1'            company = 'AAA'               config_value = 'prima chiave AAA (parent)' )
-        ( function = 'CIAOPARENT'      config_key = 'PARENT_FUNCTION' company = 'AAA'               config_value = 'CIAOGRANDPARENT' )
+
         ( function = 'CIAOGRANDPARENT' config_key = 'KEY1'            company = 'AAA'               config_value = 'prima chiave AAA (grandparent)' )
-*        ( function = 'CIAOPARENT'      config_key = 'PARENT_FUNCTION'                               config_value = 'CIAO' ) " Test parent circolari
 
         ( function = 'CIAO'            config_key = 'KEY2'                                          config_value = 'seconda chiave' )
         ( function = 'CIAO'            config_key = 'KEY2'            company = 'AAA'               config_value = 'seconda chiave AAA' )
@@ -399,7 +434,6 @@ CLASS zmp_config IMPLEMENTATION.
     ).
 
     out->write( ls_test ).
-
 
   ENDMETHOD.
 

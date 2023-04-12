@@ -50,10 +50,17 @@ define root view entity ZMP_C_FUNCTIONS_M
   key function,
 
       @UI: {
+        lineItem:       [ { position: 15, importance: #HIGH } ],
+        identification: [ { position: 15, label: 'Parent function' } ]
+      }
+      parent,
+
+      @UI: {
         lineItem:       [ { position: 20, importance: #HIGH } ],
         identification: [ { position: 20, label: 'Description' } ]
       }
       description,
+      
       @UI: {
         identification: [ { position: 30, label: 'Note' } ],
         multiLineText: true
