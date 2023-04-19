@@ -16,7 +16,8 @@ CLASS zmp_config DEFINITION
              plant           TYPE zmp_param-plant,
              config_value    TYPE zmp_param-config_value,
              hierarchy_level TYPE i,
-           END OF ty_param.
+           END OF ty_param,
+           tyt_param TYPE TABLE OF ty_param.
 
     " Tipo interno usato per registrare punteggio chiavi
     " durante la valutazione.
@@ -86,7 +87,14 @@ CLASS zmp_config DEFINITION
           iv_plant   TYPE zmp_param-plant OPTIONAL
           iv_default TYPE zmp_param-config_value OPTIONAL
         CHANGING
-          is_config  TYPE any.
+          is_config  TYPE any,
+
+
+      get_all_keys
+        IMPORTING
+          include_parents TYPE abap_boolean DEFAULT abap_false
+        CHANGING
+          ot_param        TYPE tyt_param.
 
 
   PROTECTED SECTION.
@@ -121,7 +129,9 @@ CLASS zmp_config DEFINITION
       "! Tabella interna chiavi lette da db.
       gt_param        TYPE SORTED TABLE OF ty_param WITH NON-UNIQUE KEY primary_key COMPONENTS config_key,
       "! Tabella interna cache ricerche.
-      gt_search_cache TYPE tyt_search_cache.
+      gt_search_cache TYPE tyt_search_cache,
+      "! Function principale di questa istanza.
+      gt_function     TYPE zmp_functions-function.
 
     CLASS-DATA:
       "! Cache statica istanze (per function).
@@ -187,6 +197,9 @@ CLASS zmp_config IMPLEMENTATION.
   METHOD constructor.
 
     CHECK iv_func IS NOT INITIAL.
+
+    " Function principale di questa istanza.
+    gt_function = iv_func.
 
     DATA(lv_hierarchy_level) = 0.
 
@@ -362,6 +375,17 @@ CLASS zmp_config IMPLEMENTATION.
   ENDMETHOD.
 
 
+  METHOD get_all_keys.
+
+    IF ( include_parents = abap_true ).
+      MOVE-CORRESPONDING gt_param TO ot_param.
+    ELSE.
+      MOVE-CORRESPONDING gt_param TO ot_param.
+      DELETE ot_param WHERE function NE gt_function.
+    ENDIF.
+
+  ENDMETHOD.
+
 
   METHOD if_oo_adt_classrun~main.
 
@@ -390,6 +414,10 @@ CLASS zmp_config IMPLEMENTATION.
         ( function = 'CIAO'            config_key = 'KEY2'            company = 'AAA' plant = 'P02' config_value = 'seconda chiave AAA P01' )
     ) ).
 
+    out->write( '------------------------------------------------------------------------' ).
+    out->write( '--  TEST  --------------------------------------------------------------' ).
+    out->write( '------------------------------------------------------------------------' ).
+
     TRY.
         DATA(lo_config) = zmp_config=>create( iv_function = 'CIAO' ).
       CATCH zmp_cx_config INTO DATA(exc).
@@ -402,6 +430,8 @@ CLASS zmp_config IMPLEMENTATION.
           lv_plant   TYPE zmp_param-plant VALUE 'P01',
           lt_eval    TYPE tyt_param_eval.
 
+    out->write( '' ).
+    out->write( '----- Lettura singola chiave' ).
 
     DATA(lv_result) = lo_config->get_key(
         EXPORTING
@@ -414,9 +444,14 @@ CLASS zmp_config IMPLEMENTATION.
     ).
 
     out->write( |{ lv_key } { lv_company } { lv_plant } => { lv_result }| ).
+
+    out->write( '' ).
+    out->write( '----- Tabella di valutazione lettura precedente:' ).
+
     out->write( lt_eval ).
 
     out->write( ' ' ).
+    out->write( '----- Lettura gruppo di chiavi:' ).
 
     TYPES: BEGIN OF ty_test,
              key1 TYPE c LENGTH 50,
@@ -434,6 +469,21 @@ CLASS zmp_config IMPLEMENTATION.
     ).
 
     out->write( ls_test ).
+
+    out->write( ' ' ).
+    out->write( '----- Stampa lista chiavi:' ).
+
+    DATA: lt_all_keys TYPE tyt_param.
+
+    lo_config->get_all_keys(
+        EXPORTING
+            include_parents = abap_true
+        CHANGING
+            ot_param = lt_all_keys
+    ).
+
+    out->write( lt_all_keys ).
+
 
   ENDMETHOD.
 
